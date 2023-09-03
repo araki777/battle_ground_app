@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
+import { accessTokenAtom } from "../atoms/atoms";
+import { useAtom } from "jotai";
+import Home from "./Home";
 
 const CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
 const CLIENT_SECRET_ID = import.meta.env.VITE_CLIENT_SECRET_ID;
@@ -9,14 +12,16 @@ const TOKEN_ENDPOINT = "https://oauth.battle.net/token";
 const redirectUri = "http://localhost:5173/oauth/battlenet/callback";
 
 function App() {
-  const [accessToken, setAccessToken] = useState("");
+  const [accessToken, setAccessToken] = useAtom(accessTokenAtom);
   const location = useLocation();
 
+  // urlパラメータにcodeがある場合は、auth0へtokenの発行を促す
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const code = params.get("code");
+    const storageValue = localStorage.getItem("accessToken");
 
-    if (code) {
+    if (code && !storageValue) {
       exchangeCodeForToken(code);
     }
   }, [location]);
@@ -44,7 +49,6 @@ function App() {
 
   const generateState = () => {
     const state = Math.random().toString(36).substring(7);
-    localStorage.setItem("oauthState", state);
     return state;
   };
 
@@ -63,18 +67,13 @@ function App() {
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>Battle.net OAuth 2.0 Example</h1>
-        {accessToken ? (
-          <div>
-            <p>アクセストークン: {accessToken}</p>
-          </div>
-        ) : (
-          <div>
-            <button onClick={handleLoginClick}>Battle.netでログイン</button>
-          </div>
-        )}
-      </header>
+      {accessToken ? (
+        <Home />
+      ) : (
+        <div>
+          <button onClick={handleLoginClick}>Battle.netでログイン</button>
+        </div>
+      )}
     </div>
   );
 }

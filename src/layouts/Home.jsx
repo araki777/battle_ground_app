@@ -1,43 +1,30 @@
-import React, { useState } from "react";
+import { useEffect } from "react";
 import { useAtom } from "jotai";
-import { accessTokenAtom } from "../atoms/atoms";
-import axios from "axios";
+import { accessTokenAtom, accessTokenDateAtom } from "../atoms/atom";
+import { accessTokenValidator } from "../utils/common";
+import { useNavigate } from "react-router-dom";
+import Sidebar from "./Sidebar";
+import CardList from "./CardList";
 
 const Home = () => {
   const [accessToken, setAccessToken] = useAtom(accessTokenAtom);
-  const [searchData, setSearchData] = useState([]);
+  const [accessTokenDate, setAccessTokenDate] = useAtom(accessTokenDateAtom);
+  const navigate = useNavigate();
 
-  const handleGameSearch = () => {
-    axios
-      .get("https://kr.api.blizzard.com/hearthstone/cards", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        params: {
-          locale: "ja-jp",
-          gameMode: "battlegrounds",
-          bgCardType: "hero",
-        },
-      })
-      .then((response) => {
-        console.log(response);
-        setSearchData(response.data.cards);
-      });
-  };
+  useEffect(() => {
+    if (accessToken) {
+      if (accessTokenValidator(accessTokenDate)) {
+        setAccessToken(null);
+        setAccessTokenDate(null);
+        navigate("/");
+      }
+    }
+  }, [accessToken]);
 
   return (
-    <div>
-      <button onClick={handleGameSearch}>検索</button>
-      {searchData && (
-        <div>
-          {searchData.map((data) => (
-            <div key={data.id}>
-              <div>{data.name}</div>
-              <img src={data.image} alt={data.name} />
-            </div>
-          ))}
-        </div>
-      )}
+    <div className="container">
+      <Sidebar />
+      <CardList accessToken={accessToken} />
     </div>
   );
 };

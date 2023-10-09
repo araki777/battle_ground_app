@@ -52,157 +52,36 @@ const fetchCardList = async (
   return response;
 };
 
-// 検索
-export const cardSearch = async (accessToken) => {
-  let response1AllData = [];
-  let response2AllData = [];
-  let response3AllData = [];
-  let response4AllData = [];
-  let response5AllData = [];
-  let nextPage = 1;
+export const fetchDataWithRetry = async (accessToken, category, maxRetries) => {
+  const categories =
+    category === "All"
+      ? ["hero", "minion", "quest", "reward", "anomaly"]
+      : [category];
+  const responseData = [];
 
-  try {
-    // 一つ目のGETリクエストを実行
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await fetchCardList(accessToken, nextPage, "hero");
-      const data = response.data.cards;
+  for (const category of categories) {
+    let retries = 0;
+    let nextPage = 1;
 
-      response1AllData = response1AllData.concat(data);
+    while (retries < maxRetries) {
+      try {
+        const response = await fetchCardList(accessToken, nextPage, category);
+        const data = response.data.cards;
+        responseData.push(data);
 
-      if (nextPage == response.data.pageCount) {
-        break;
+        if (nextPage >= response.data.pageCount) {
+          break;
+        }
+
+        nextPage++;
+      } catch (error) {
+        console.error(`Failed to fetch data for ${category}. Retrying...`);
+        retries++;
+        await new Promise((resolve) => setTimeout(resolve, 2000)); // 2秒待機してリトライ
       }
-
-      nextPage++;
-
-      // 0.5秒の遅延
-      await new Promise(function (resolve) {
-        setTimeout(resolve, 0.5 * 1000);
-      });
     }
-  } catch (e) {
-    console.log(e);
   }
 
-  try {
-    // ページの初期化
-    nextPage = 1;
-
-    // 二つ目のGETリクエストを実行
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await fetchCardList(accessToken, nextPage, "minion");
-      const data = response.data.cards;
-
-      response2AllData = response2AllData.concat(data);
-
-      if (nextPage == response.data.pageCount) {
-        break;
-      }
-
-      nextPage++;
-
-      // 0.5秒の遅延
-      await new Promise(function (resolve) {
-        setTimeout(resolve, 0.5 * 1000);
-      });
-    }
-  } catch (error) {
-    console.error("カード検索中にエラーが発生しました:", error);
-    return [];
-  }
-
-  try {
-    // ページの初期化
-    nextPage = 1;
-
-    // 三つ目のGETリクエストを実行
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await fetchCardList(accessToken, nextPage, "quest");
-      const data = response.data.cards;
-
-      response3AllData = response3AllData.concat(data);
-
-      if (nextPage == response.data.pageCount) {
-        break;
-      }
-
-      nextPage++;
-
-      // 0.5秒の遅延
-      await new Promise(function (resolve) {
-        setTimeout(resolve, 0.5 * 1000);
-      });
-    }
-  } catch (error) {
-    console.error("カード検索中にエラーが発生しました:", error);
-    return [];
-  }
-
-  try {
-    // ページの初期化
-    nextPage = 1;
-
-    // 4つ目のGETリクエストを実行
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await fetchCardList(accessToken, nextPage, "reward");
-      const data = response.data.cards;
-
-      response4AllData = response4AllData.concat(data);
-
-      if (nextPage == response.data.pageCount) {
-        break;
-      }
-
-      nextPage++;
-
-      // 0.5秒の遅延
-      await new Promise(function (resolve) {
-        setTimeout(resolve, 0.5 * 1000);
-      });
-    }
-  } catch (error) {
-    console.error("カード検索中にエラーが発生しました:", error);
-    return [];
-  }
-
-  try {
-    // ページの初期化
-    nextPage = 1;
-
-    // 5つ目のGETリクエストを実行
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await fetchCardList(accessToken, nextPage, "anomaly");
-      const data = response.data.cards;
-
-      response5AllData = response5AllData.concat(data);
-
-      if (nextPage == response.data.pageCount) {
-        break;
-      }
-
-      nextPage++;
-
-      // 0.5秒の遅延
-      await new Promise(function (resolve) {
-        setTimeout(resolve, 0.5 * 1000);
-      });
-    }
-  } catch (error) {
-    console.error("カード検索中にエラーが発生しました:", error);
-    return [];
-  }
-
-  // データを結合して返す
-  const cardLists = response1AllData.concat(
-    response2AllData,
-    response3AllData,
-    response4AllData,
-    response5AllData
-  );
-  return cardLists;
+  console.log(responseData);
+  return responseData;
 };

@@ -1,48 +1,60 @@
 import { useEffect, useState } from "react";
-import { cardSearch } from "../utils/api";
+import { fetchDataWithRetry } from "../utils/api";
 import { useStyles } from "../styles/CardListStyles";
 import { forwardRef } from "react";
-import { Group, Avatar, Text, Select } from "@mantine/core";
+import {
+  Group,
+  Avatar,
+  Text,
+  Select,
+  Container,
+  Grid,
+  Flex,
+  Button,
+} from "@mantine/core";
 
 const data = [
   {
     image: "https://img.icons8.com/clouds/256/000000/futurama-bender.png",
-    label: "Bender Bending Rodríguez",
-    value: "Bender Bending Rodríguez",
-    description: "Fascinated with cooking",
+    label: "All",
+    value: "All",
   },
   {
     image: "https://img.icons8.com/clouds/256/000000/futurama-mom.png",
-    label: "Carol Miller",
-    value: "Carol Miller",
-    description: "One of the richest people on Earth",
+    label: "Hero",
+    value: "hero",
   },
   {
     image: "https://img.icons8.com/clouds/256/000000/homer-simpson.png",
-    label: "Homer Simpson",
-    value: "Homer Simpson",
-    description: "Overweight, lazy, and often ignorant",
+    label: "Minion",
+    value: "minion",
   },
   {
     image: "https://img.icons8.com/clouds/256/000000/spongebob-squarepants.png",
-    label: "Spongebob Squarepants",
-    value: "Spongebob Squarepants",
-    description: "Not just a sponge",
+    label: "Quest",
+    value: "quest",
+  },
+  {
+    image: "https://img.icons8.com/clouds/256/000000/spongebob-squarepants.png",
+    label: "Reward",
+    value: "reward",
+  },
+  {
+    image: "https://img.icons8.com/clouds/256/000000/spongebob-squarepants.png",
+    label: "Anomaly",
+    value: "anomaly",
   },
 ];
 
 // eslint-disable-next-line react/display-name
 const SelectItem = forwardRef(
   // eslint-disable-next-line react/prop-types
-  ({ image, label, description, ...others }, ref) => (
+  ({ image, label, ...others }, ref) => (
     <div ref={ref} {...others}>
       <Group noWrap>
         <Avatar src={image} />
         <div>
           <Text size="sm">{label}</Text>
-          <Text size="xs" opacity={0.65}>
-            {description}
-          </Text>
         </div>
       </Group>
     </div>
@@ -56,6 +68,15 @@ const CardList = ({ accessToken }) => {
   const [searchData, setSearchData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
+  const [value, setValue] = useState(data[0].label);
+  const [selectedStars, setSelectedStars] = useState(Array(7).fill(false));
+
+  const handleStarClick = (index) => {
+    // 選択された星の状態を反転
+    const newSelectedStars = [...selectedStars];
+    newSelectedStars[index] = !newSelectedStars[index];
+    setSelectedStars(newSelectedStars);
+  };
 
   const handleScroll = () => {
     window.scrollY > 10 ? setIsSticky(true) : setIsSticky(false);
@@ -68,15 +89,34 @@ const CardList = ({ accessToken }) => {
 
   useEffect(() => {
     if (accessToken) {
-      handleCardSearch();
+      handleCardSearch(value);
     }
   }, [accessToken]);
 
-  const handleCardSearch = async () => {
+  useEffect(() => {
+    if (accessToken) {
+      handleCardSearch(value);
+    }
+  }, [value]);
+
+  useEffect(() => {
+    let tier = "";
+    if (selectedStars.includes(true)) {
+      for (let i = 0; i < selectedStars; i++) {
+        if (tier == "" && selectedStars[i]) {
+          tier += `tier=${i + 1}`;
+        } else if (selectedStars[i]) {
+          tier += `,tier=${i + 1}`;
+        }
+      }
+    }
+  }, [selectedStars]);
+
+  const handleCardSearch = async (category) => {
     setLoading(true); // ローディング状態を設定
 
     try {
-      const cardList = await cardSearch(accessToken);
+      const cardList = await fetchDataWithRetry(accessToken, category, 3);
       setSearchData(cardList);
     } catch (error) {
       console.error("データの取得に失敗しました:", error);
@@ -84,6 +124,23 @@ const CardList = ({ accessToken }) => {
       setLoading(false); // ローディング状態を解除
     }
   };
+
+  const result = (
+    <Grid columns={5} gutter="lg">
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        searchData.map((row, rowIndex) =>
+          row.map((cell, cellIndex) => (
+            <Grid.Col span={1} key={`${rowIndex}-${cellIndex}`}>
+              <img src={cell.image} />
+              <h5>{cell.name}</h5>
+            </Grid.Col>
+          ))
+        )
+      )}
+    </Grid>
+  );
 
   return (
     <div className={classes.cardGalleryContainer}>
@@ -94,35 +151,36 @@ const CardList = ({ accessToken }) => {
       >
         <div className={classes.cardGalleryFilterContainer}>
           <Select
-            label="Choose employee of the month"
-            placeholder="Pick one"
             itemComponent={SelectItem}
             data={data}
-            searchable
-            maxDropdownHeight={400}
-            nothingFound="Nobody here"
-            filter={(value, item) =>
-              item.label.toLowerCase().includes(value.toLowerCase().trim()) ||
-              item.description
-                .toLowerCase()
-                .includes(value.toLowerCase().trim())
-            }
+            onChange={setValue}
+            maxDropdownHeight={350}
+            value={value}
+            mr="md"
           />
+          <Flex
+            gap="xl"
+            justify="center"
+            align="center"
+            direction="row"
+            wrap="wrap"
+          >
+            {Array.from({ length: 7 }, (_, index) => (
+              <Button
+                className={`${classes.button} ${
+                  selectedStars[index + 1] ? "selected" : ""
+                } `}
+                key={index}
+                onClick={() => handleStarClick(index + 1)}
+              >
+                <h4 className={classes.buttonText}>{index + 1}</h4>
+              </Button>
+            ))}
+          </Flex>
         </div>
       </div>
       <div className={classes.cardGridLayout}>
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          searchData.map((data, index) => {
-            return (
-              <div key={index}>
-                <img src={data.image}></img>
-                <h5>{data.name}</h5>
-              </div>
-            );
-          })
-        )}
+        <Container fluid={true}>{result}</Container>
       </div>
     </div>
   );
